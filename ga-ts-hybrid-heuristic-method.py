@@ -452,7 +452,143 @@ class HybridGATS:
         total_improvement = ((ga_fitness - final_fitness) / ga_fitness * 100)
         total_time = ga_time + ts_time
         
-        return final_solution, final_fitness, total_time, ga_solution, ga_fitness   
+        return final_solution, final_fitness, total_time, ga_solution, ga_fitness 
+
+# Karşılaştırma ve Görselleştirme
+def compare_ga_vs_hybrid(ga_only_results, hybrid_results, problem):
+    """GA-only ve GA+TS hibrit sonuçlarını karşılaştır"""
+    
+    ga_solution, ga_fitness, ga_time = ga_only_results
+    hybrid_solution, hybrid_fitness, hybrid_time, _, _ = hybrid_results
+    
+    # Karşılaştırma tablosu
+    comparison_data = {
+        'Metrik': ['Fitness Değeri', 'Hesaplama Süresi (s)', 'İyileşme Oranı (%)'],
+        'GA (Tek Başına)': [
+            f"{ga_fitness:.2f}",
+            f"{ga_time:.2f}",
+            "-"
+        ],
+        'GA + TS (Hibrit)': [
+            f"{hybrid_fitness:.2f}",
+            f"{hybrid_time:.2f}",
+            f"{((ga_fitness - hybrid_fitness) / ga_fitness * 100):.2f}%"
+        ]
+    }
+    
+    df = pd.DataFrame(comparison_data)
+    print("\n" + "="*70)
+    print("KARŞILAŞTIRMA TABLOSU: GA vs GA+TS")
+    print("="*70)
+    print(df.to_string(index=False))
+    print("="*70)
+    
+    # Grafik karşılaştırma
+    fig, axes = plt.subplots(2, 2, figsize=(16, 10))
+    
+    # 1. Fitness karşılaştırması (bar chart)
+    methods = ['GA\n(Tek Başına)', 'GA + TS\n(Hibrit)']
+    fitness_values = [ga_fitness, hybrid_fitness]
+    colors = ['steelblue', 'darkgreen']
+    
+    axes[0, 0].bar(methods, fitness_values, color=colors, alpha=0.7, edgecolor='black')
+    axes[0, 0].set_ylabel('Fitness Değeri (Düşük = İyi)', fontsize=11)
+    axes[0, 0].set_title('Fitness Değeri Karşılaştırması', fontsize=12, fontweight='bold')
+    axes[0, 0].grid(axis='y', alpha=0.3)
+    for i, v in enumerate(fitness_values):
+        axes[0, 0].text(i, v + max(fitness_values)*0.02, f'{v:.2f}', 
+                        ha='center', fontweight='bold')
+    
+    # 2. Hesaplama süresi karşılaştırması
+    time_values = [ga_time, hybrid_time]
+    axes[0, 1].bar(methods, time_values, color=colors, alpha=0.7, edgecolor='black')
+    axes[0, 1].set_ylabel('Süre (saniye)', fontsize=11)
+    axes[0, 1].set_title('Hesaplama Süresi Karşılaştırması', fontsize=12, fontweight='bold')
+    axes[0, 1].grid(axis='y', alpha=0.3)
+    for i, v in enumerate(time_values):
+        axes[0, 1].text(i, v + max(time_values)*0.02, f'{v:.2f}s', 
+                        ha='center', fontweight='bold')
+    
+    # 3. İyileşme yüzdesi
+    improvement = ((ga_fitness - hybrid_fitness) / ga_fitness * 100)
+    axes[1, 0].bar(['İyileşme'], [improvement], color='green', alpha=0.7, edgecolor='black')
+    axes[1, 0].set_ylabel('İyileşme Yüzdesi (%)', fontsize=11)
+    axes[1, 0].set_title('TS ile Sağlanan İyileşme', fontsize=12, fontweight='bold')
+    axes[1, 0].grid(axis='y', alpha=0.3)
+    axes[1, 0].text(0, improvement + 0.5, f'%{improvement:.2f}', 
+                    ha='center', fontweight='bold', fontsize=14)
+    
+    # 4. Üretim-talep gap karşılaştırması
+    ga_obj = GeneticAlgorithm(problem)
+    _, ga_water_gap, ga_elec_gap = ga_obj.calculate_fitness(ga_solution)
+    _, hybrid_water_gap, hybrid_elec_gap = ga_obj.calculate_fitness(hybrid_solution)
+    
+    gap_comparison = {
+        'GA - Su Std': np.std(ga_water_gap),
+        'Hibrit - Su Std': np.std(hybrid_water_gap),
+        'GA - Elektrik Std': np.std(ga_elec_gap),
+        'Hibrit - Elektrik Std': np.std(hybrid_elec_gap)
+    }
+    
+    labels = list(gap_comparison.keys())
+    values = list(gap_comparison.values())
+    bar_colors = ['steelblue', 'darkgreen', 'steelblue', 'darkgreen']
+    
+    axes[1, 1].bar(range(len(labels)), values, color=bar_colors, alpha=0.7, edgecolor='black')
+    axes[1, 1].set_xticks(range(len(labels)))
+    axes[1, 1].set_xticklabels(labels, rotation=45, ha='right', fontsize=9)
+    axes[1, 1].set_ylabel('Standart Sapma', fontsize=11)
+    axes[1, 1].set_title('Üretim-Talep Gap Standart Sapması', fontsize=12, fontweight='bold')
+    axes[1, 1].grid(axis='y', alpha=0.3)
+    
+    plt.tight_layout()
+    plt.show()
+    
+    return df
+
+
+def plot_hybrid_convergence(hybrid_obj):
+    """Hibrit yaklaşımın yakınsama grafiği"""
+    
+    fig, axes = plt.subplots(1, 2, figsize=(16, 5))
+    
+    # GA + TS birleşik grafik
+    ga_gens = len(hybrid_obj.ga_fitness_history)
+    ts_iters = len(hybrid_obj.ts_fitness_history)
+    
+    all_fitness = hybrid_obj.ga_fitness_history + hybrid_obj.ts_fitness_history
+    
+    axes[0].plot(range(ga_gens), hybrid_obj.ga_fitness_history, 
+                 'b-', linewidth=2, label='GA Fazı')
+    axes[0].plot(range(ga_gens, ga_gens + ts_iters), hybrid_obj.ts_fitness_history, 
+                 'g-', linewidth=2, label='TS Fazı')
+    axes[0].axvline(x=ga_gens, color='red', linestyle='--', 
+                    label='GA → TS Geçişi', linewidth=2)
+    axes[0].set_xlabel('İterasyon / Nesil', fontsize=11)
+    axes[0].set_ylabel('En İyi Fitness', fontsize=11)
+    axes[0].set_title('Hibrit GA+TS Yakınsama Grafiği', fontsize=12, fontweight='bold')
+    axes[0].legend(fontsize=10)
+    axes[0].grid(True, alpha=0.3)
+    
+    # Faz karşılaştırması
+    phases = ['GA Fazı', 'TS Fazı']
+    phase_improvements = [
+        hybrid_obj.ga_fitness_history[0] - hybrid_obj.ga_fitness_history[-1],
+        hybrid_obj.ts_fitness_history[0] - hybrid_obj.ts_fitness_history[-1]
+    ]
+    
+    axes[1].bar(phases, phase_improvements, color=['steelblue', 'darkgreen'], 
+                alpha=0.7, edgecolor='black')
+    axes[1].set_ylabel('Fitness İyileşme Miktarı', fontsize=11)
+    axes[1].set_title('Faz Bazlı İyileşme Katkıları', fontsize=12, fontweight='bold')
+    axes[1].grid(axis='y', alpha=0.3)
+    
+    for i, v in enumerate(phase_improvements):
+        axes[1].text(i, v + max(phase_improvements)*0.02, f'{v:.2f}', 
+                     ha='center', fontweight='bold')
+    
+    plt.tight_layout()
+    plt.show()      
 
 if __name__ == "__main__":
     # Problem oluştur

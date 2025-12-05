@@ -412,4 +412,46 @@ class TabuSearch:
                        self.calculate_fitness(initial_solution) * 100)
         print(f"İyileşme: %{improvement:.2f}")
         
-        return best_solution, best_fitness, computation_time        
+        return best_solution, best_fitness, computation_time     
+    
+class HybridGATS:
+    """Hibrit GA + TS Yaklaşımı"""
+    
+    def __init__(self, problem, ga_params=None, ts_params=None):
+        self.problem = problem
+        self.ga_params = ga_params or {}
+        self.ts_params = ts_params or {}
+        
+        self.ga_fitness_history = []
+        self.ts_fitness_history = []
+        self.ga_time = 0
+        self.ts_time = 0
+        
+    def run(self):
+        """Hibrit yaklaşımı çalıştır"""
+        
+        # 1. Adım: GA ile başlangıç çözümü bul
+        ga = GeneticAlgorithm(self.problem, **self.ga_params)
+        ga_solution, ga_fitness, ga_time = ga.run()
+        
+        self.ga_fitness_history = ga.best_fitness_history
+        self.ga_time = ga_time
+        
+        print(f"\n GA Tamamlandı: Fitness = {ga_fitness:.2f}, Süre = {ga_time:.2f}s")
+        
+        # 2. Adım: TS ile iyileştir
+        ts = TabuSearch(self.problem, **self.ts_params)
+        final_solution, final_fitness, ts_time = ts.run(ga_solution)
+        
+        self.ts_fitness_history = ts.best_fitness_history
+        self.ts_time = ts_time
+        
+        print(f"\n TS Tamamlandı: Fitness = {final_fitness:.2f}, Süre = {ts_time:.2f}s")
+        
+        # Toplam iyileşme
+        total_improvement = ((ga_fitness - final_fitness) / ga_fitness * 100)
+        total_time = ga_time + ts_time
+        
+        return final_solution, final_fitness, total_time, ga_solution, ga_fitness    
+    
+       

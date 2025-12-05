@@ -609,6 +609,14 @@ if __name__ == "__main__":
     )
     hybrid_solution, hybrid_fitness, hybrid_time, _, _ = hybrid.run()
     hybrid_results = (hybrid_solution, hybrid_fitness, hybrid_time, ga_solution, ga_fitness)
+
+    # KARŞILAŞTIRMA
+    print("\n" + "="*70)
+    print("SONUÇLARI KARŞILAŞTIR VE GÖRSELLEŞTİR")
+    print("="*70)
+    
+    comparison_df = compare_ga_vs_hybrid(ga_only_results, hybrid_results, problem)
+    plot_hybrid_convergence(hybrid)
     
     print("\nGA + TS TAMAMLANDI!")
     print(f"GA Fitness: {ga_fitness:.2f}")

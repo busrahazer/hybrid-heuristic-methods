@@ -111,4 +111,53 @@ class PMSProblem:
             elif eq_id <= self.problem.n_boilers + self.problem.n_turbines:
                 return 'turbine'
             else:
-                return 'distiller'           
+                return 'distiller'  
+
+        def calculate_fitness(self, chromosome):
+            """
+            Fitness = üretim-talep farkının standart sapmasını minimize et
+            Daha düşük fitness = daha iyi çözüm
+            """   
+            water_production = np.zeros(self.problem.T)
+            electrity_production = np.zeros(self.problem.T) 
+
+            # Her hafta için üretim kapasitesi hesaplama
+            for week in range(self.problem.T):
+                # Bakımda olmayan ekipmanları say
+                equipment_in_maintanance = chromosome[week]       
+
+                # Basitleşitirlmiş hesaplama
+                # Gerçekte kazan (boiler) bakımda ise ona bağlı türbin ve damıtıcı da çalışmaz
+                active_turbines = self.problem.n_turbines
+                active_distilers = self.problem.n_distillers
+
+                # Bakımdaki ekipmanların sayısını çıkart
+                if equipment_in_maintanance != 0:
+                    eq_type = self.get_equipment_type(equipment_in_maintanance)
+                    if eq_type == 'turbine':
+                        active_turbines -= 1
+                    elif eq_type == 'distiller':
+                        active_distilers -= 1
+                        # Boiler bakımda ise ona bağlı türbin de damıtıcı da çalışmaz
+                        active_turbines -= 1
+                        active_distillers -= 2 # 2 damıtıcı olma sebebi; ünitelerde 1 boiler, 1 türbin ve 2 damıtıcı var
+
+                # Üretimi hesapla
+                electrity_production[week] = active_turbines * self.problem.production_capacity['turbine']
+                water_production[week] = active_distilers * self.problem.production_capacity['distiller']  
+
+            # Talep ile üretim farkı
+            water_gap = water_production - self.problem.water_demand
+            electricity_gap = electrity_production - self.problem.electricity_demand
+
+            # Negatif gap = talebi karşılayamama (çok kötü), pozitif gap = fazla üretim    
+            penalty = 0
+            penalty += np.sum(np.abs(water_gap[water_gap <0])) * 1000 # büyük ceza yedi xd
+            penalty += np.sum(np.abs(electricity_gap[electricity_gap <0])) * 1000
+
+            # Fitness = standart sapma + ceza
+            fitness = np.std(water_gap) + np.std(electricity_gap) + penalty
+
+            return fitness, water_gap, electricity_gap
+        
+             

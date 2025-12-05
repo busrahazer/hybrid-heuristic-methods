@@ -332,15 +332,35 @@ def analyze_production_demand_gap(chromosome, problem, ga):
     print(f"\nElektrik - Ortalama Gap: {np.mean(electricity_gap):.2f} MW")
     print(f"Elektrik - Std Sapma: {np.std(electricity_gap):.2f} MW")
     print(f"Elektrik - Min Gap: {np.min(electricity_gap):.2f} MW")
-    print(f"Elektrik - Max Gap: {np.max(electricity_gap):.2f} MW")             
-        
+    print(f"Elektrik - Max Gap: {np.max(electricity_gap):.2f} MW")                  
 
 # Ana çalıştırma
 if __name__ == "__main__":
+    print("=" * 60)
+    print("Genetik Algoritma (GA) ile PMS Problemi Çözümü")
+    print("=" * 60)
+    
     # Problem oluştur
     problem = PMSProblem()
+    print(f"\nProblem Parametreleri:")
+    print(f"- Toplam Ekipman: {problem.total_equipment}")
+    print(f"- Zaman Horizonu: {problem.T} hafta")
+    print(f"- Max Eşzamanlı Bakım: {problem.max_concurrent_maintenances} ünite")
     
     # GA'yı çalıştır
     print("\nGenetik Algoritma başlatılıyor...")
-    ga = GeneticAlgorithm(problem, pop_size=100, generations=200, crossover_rate=0.8, mutation_rate=0.2)
+    ga = GeneticAlgorithm(problem, pop_size=100, generations=200)
     best_solution, best_fitness, comp_time = ga.run()
+    
+    # Sonuçları görselleştir
+    print("\n" + "=" * 60)
+    print("Sonuçlar görselleştiriliyor...")
+    print("=" * 60)
+    
+    plot_fitness_evolution(ga)
+    visualize_schedule(best_solution, problem)
+    analyze_production_demand_gap(best_solution, problem, ga)
+    
+    print("\n GA TAMAMLANDI!")
+    print(f"Hesaplama süresi: {comp_time:.2f} saniye")
+    print(f"En iyi fitness değeri: {best_fitness:.2f}")

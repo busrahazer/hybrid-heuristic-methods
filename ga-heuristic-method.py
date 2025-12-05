@@ -160,4 +160,39 @@ class PMSProblem:
 
             return fitness, water_gap, electricity_gap
         
+        def selection(self, population, fitness_scores):
+            """Turnuva seçimi"""
+            torunament_size = 5
+            selected = []
+
+            for i in range(len(population)):
+                touranment_index = np.random.choice(len(population), torunament_size, replace=False)
+                touranment_fitness = [fitness_scores[i] for i in touranment_index]
+                winner_index = touranment_index[np.argmin(touranment_fitness)]
+                selected.append(population[winner_index].copy())
+                                
+            return selected   
+
+        def crossover(self, parent1, parent2):
+            """Tek noktalı çaprazlama"""
+            if np.random.random() > self.crossover_rate:
+                return parent1.copy(), parent2.copy()  
+
+            point = np.radon.randint(1, len(parent1))
+            child1 = np.concatenate([parent1[:point]], parent2[point:])
+            child2 = np.concatenate([parent2[:point]], parent1[point:])
+
+            return child1, child2
+
+        def mutate(self, chromosome):
+          """Swap mutation: iki rastgele hafta yer değiştirir"""
+          if np.random.random() > self.mutation_rate:
+              return chromosome
+
+          mutated = chromosome.copy()
+          index1, index2 = np.random.choice(len(chromosome), 2, replace=False)
+          mutated[index1], mutated[index2] = mutated[index2], mutated[index1]
+
+          return mutated         
+        
              

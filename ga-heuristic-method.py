@@ -43,7 +43,7 @@ class PMSProblem:
 
     def generate_demand(self, type):
         """Talep verisi üretme (yaz aylarında artış)"""
-        base_demand = np.pnes(self.T)
+        base_demand = np.ones(self.T)
         # Yaz aylarında (hafta 21-32) artış
         summer_weeks =  range(20, 32)
 
@@ -60,7 +60,7 @@ class PMSProblem:
 
         return base_demand    
 
-    class GeneticAlgorithm:    
+class GeneticAlgorithm:    
         """PMS için Genetik Algoritma"""
 
         def __init__(self, problem, pop_size=100, generations=200, crossover_rate=0.8, mutation_rate=0.2):
@@ -178,9 +178,9 @@ class PMSProblem:
             if np.random.random() > self.crossover_rate:
                 return parent1.copy(), parent2.copy()  
 
-            point = np.radon.randint(1, len(parent1))
-            child1 = np.concatenate([parent1[:point]], parent2[point:])
-            child2 = np.concatenate([parent2[:point]], parent1[point:])
+            point = np.random.randint(1, len(parent1))
+            child1 = np.concatenate([parent1[:point], parent2[point:]])
+            child2 = np.concatenate([parent2[:point], parent1[point:]])
 
             return child1, child2
 
@@ -225,11 +225,11 @@ class PMSProblem:
                 self.avg_fitness_history.append(np.mean(fitness_scores))
 
                 # Yeni nesil oluştur
-                selected = self.seleciton(population, fitness_scores)
+                selected = self.selection(population, fitness_scores)
 
                 new_population = []
                 for i in range(0, len(selected), 2):
-                    if i+ 1 < len(selected):
+                    if i + 1 < len(selected):
                         child1, child2 = self.crossover(selected[i], selected[i+1])
                         child1 = self.mutate(child1)
                         child2 = self.mutate(child2)
@@ -247,6 +247,7 @@ class PMSProblem:
 
             return best_solution, best_fitness, computation_time
         
+
 # Ana çalıştırma
 if __name__ == "__main__":
     # Problem oluştur
@@ -256,4 +257,3 @@ if __name__ == "__main__":
     print("\nGenetik Algoritma başlatılıyor...")
     ga = GeneticAlgorithm(problem, pop_size=100, generations=200, crossover_rate=0.8, mutation_rate=0.2)
     best_solution, best_fitness, comp_time = ga.run()
-             

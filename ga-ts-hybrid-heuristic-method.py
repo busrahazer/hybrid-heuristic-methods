@@ -332,3 +332,84 @@ class TabuSearch:
         # Tabu tenure'ı aşan hareketleri çıkar
         if len(self.tabu_list) > self.tabu_tenure:
             self.tabu_list.pop(0)  
+
+    def run(self, initial_solution):
+        """Tabu Search'ü çalıştır"""
+        print("\n--- Tabu Search Başlatılıyor ---")
+        start_time = datetime.now()
+        
+        current_solution = initial_solution.copy()
+        current_fitness = self.calculate_fitness(current_solution)
+        
+        best_solution = current_solution.copy()
+        best_fitness = current_fitness
+        
+        self.best_fitness_history.append(best_fitness)
+        
+        iterations_without_improvement = 0
+        
+        for iteration in range(self.max_iterations):
+            # Komşuları üret
+            neighbors = self.generate_neighbors(current_solution)
+            
+            if not neighbors:
+                print(f"İterasyon {iteration}: Komşu bulunamadı, durduruluyor.")
+                break
+            
+            # En iyi komşuyu bul
+            best_neighbor = None
+            best_neighbor_fitness = float('inf')
+            best_move = None
+            
+            for neighbor, move, move_type in neighbors:
+                neighbor_fitness = self.calculate_fitness(neighbor)
+                
+                # Aspiration kriteri: Tabu olsa bile şu ana kadarki en iyi çözümden iyiyse kabul et
+                if neighbor_fitness < best_fitness:
+                    best_neighbor = neighbor
+                    best_neighbor_fitness = neighbor_fitness
+                    best_move = move
+                    break  # En iyi bulundu, döngüden çık
+                
+                # Normal komşu değerlendirmesi
+                if neighbor_fitness < best_neighbor_fitness:
+                    best_neighbor = neighbor
+                    best_neighbor_fitness = neighbor_fitness
+                    best_move = move
+            
+            # Komşuya geç
+            current_solution = best_neighbor
+            current_fitness = best_neighbor_fitness
+            
+            # Tabu listesini güncelle
+            if best_move:
+                self.update_tabu_list(best_move)
+            
+            # En iyi çözümü güncelle
+            if current_fitness < best_fitness:
+                best_solution = current_solution.copy()
+                best_fitness = current_fitness
+                iterations_without_improvement = 0
+                print(f"TS İterasyon {iteration}: YENİ EN İYİ Fitness = {best_fitness:.2f} ✓")
+            else:
+                iterations_without_improvement += 1
+            
+            self.best_fitness_history.append(best_fitness)
+            
+            # Erken durdurma
+            if iterations_without_improvement > 15:
+                print(f"İterasyon {iteration}: 15 iterasyonda iyileşme yok, durduruluyor.")
+                break
+        
+        end_time = datetime.now()
+        computation_time = (end_time - start_time).total_seconds()
+        
+        print(f"\nTabu Search tamamlandı!")
+        print(f"Süre: {computation_time:.2f} saniye")
+        print(f"Başlangıç fitness: {self.calculate_fitness(initial_solution):.2f}")
+        print(f"Final fitness: {best_fitness:.2f}")
+        improvement = ((self.calculate_fitness(initial_solution) - best_fitness) / 
+                       self.calculate_fitness(initial_solution) * 100)
+        print(f"İyileşme: %{improvement:.2f}")
+        
+        return best_solution, best_fitness, computation_time        

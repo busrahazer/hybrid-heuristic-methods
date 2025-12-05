@@ -247,6 +247,93 @@ class GeneticAlgorithm:
 
             return best_solution, best_fitness, computation_time
         
+# Visualizasyon fonksiyonları
+def plot_fitness_evolution(ga):
+    """Fitness evrimini görselleştir"""
+    plt.figure(figsize=(12, 5))
+    
+    plt.subplot(1, 2, 1)
+    plt.plot(ga.best_fitness_history, label='En İyi Fitness', linewidth=2)
+    plt.plot(ga.avg_fitness_history, label='Ortalama Fitness', alpha=0.7)
+    plt.xlabel('Nesil')
+    plt.ylabel('Fitness Değeri')
+    plt.title('GA Fitness Evrimi')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    plt.subplot(1, 2, 2)
+    plt.plot(ga.best_fitness_history, linewidth=2, color='green')
+    plt.xlabel('Nesil')
+    plt.ylabel('En İyi Fitness')
+    plt.title('En İyi Çözümün Gelişimi')
+    plt.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.show()
+
+
+def visualize_schedule(chromosome, problem):
+    """Bakım çizelgesini görselleştir"""
+    plt.figure(figsize=(15, 6))
+    
+    # Haftalık bakım durumunu göster
+    schedule_matrix = np.zeros((problem.total_equipment, problem.T))
+    
+    for week in range(problem.T):
+        if chromosome[week] != 0:
+            eq_id = chromosome[week] - 1
+            schedule_matrix[eq_id, week] = 1
+    
+    plt.imshow(schedule_matrix, aspect='auto', cmap='RdYlGn_r', interpolation='nearest')
+    plt.colorbar(label='Bakım Durumu (1=Bakımda, 0=Çalışıyor)')
+    plt.xlabel('Hafta')
+    plt.ylabel('Ekipman ID')
+    plt.title('Preventive Maintenance Schedule (GA)')
+    plt.tight_layout()
+    plt.show()
+
+
+def analyze_production_demand_gap(chromosome, problem, ga):
+    """Üretim-talep farkını analiz et"""
+    _, water_gap, electricity_gap = ga.calculate_fitness(chromosome)
+    
+    fig, axes = plt.subplots(2, 1, figsize=(14, 8))
+    
+    # Su üretimi-talep analizi
+    axes[0].plot(range(problem.T), water_gap, marker='o', linewidth=2, markersize=4)
+    axes[0].axhline(y=0, color='r', linestyle='--', label='Hedef (Gap=0)')
+    axes[0].fill_between(range(problem.T), 0, water_gap, alpha=0.3)
+    axes[0].set_xlabel('Hafta')
+    axes[0].set_ylabel('Su Üretim-Talep Farkı (MIGD)')
+    axes[0].set_title('Su Üretim Fazlası/Açığı')
+    axes[0].legend()
+    axes[0].grid(True, alpha=0.3)
+    
+    # Elektrik üretimi-talep analizi
+    axes[1].plot(range(problem.T), electricity_gap, marker='s', linewidth=2, 
+                 markersize=4, color='orange')
+    axes[1].axhline(y=0, color='r', linestyle='--', label='Hedef (Gap=0)')
+    axes[1].fill_between(range(problem.T), 0, electricity_gap, alpha=0.3, color='orange')
+    axes[1].set_xlabel('Hafta')
+    axes[1].set_ylabel('Elektrik Üretim-Talep Farkı (MW)')
+    axes[1].set_title('Elektrik Üretim Fazlası/Açığı')
+    axes[1].legend()
+    axes[1].grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.show()
+    
+    # İstatistiksel analiz
+    print("\n=== Üretim-Talep Farkı İstatistikleri ===")
+    print(f"Su - Ortalama Gap: {np.mean(water_gap):.2f} MIGD")
+    print(f"Su - Std Sapma: {np.std(water_gap):.2f} MIGD")
+    print(f"Su - Min Gap: {np.min(water_gap):.2f} MIGD")
+    print(f"Su - Max Gap: {np.max(water_gap):.2f} MIGD")
+    print(f"\nElektrik - Ortalama Gap: {np.mean(electricity_gap):.2f} MW")
+    print(f"Elektrik - Std Sapma: {np.std(electricity_gap):.2f} MW")
+    print(f"Elektrik - Min Gap: {np.min(electricity_gap):.2f} MW")
+    print(f"Elektrik - Max Gap: {np.max(electricity_gap):.2f} MW")             
+        
 
 # Ana çalıştırma
 if __name__ == "__main__":

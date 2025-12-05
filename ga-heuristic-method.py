@@ -193,6 +193,67 @@ class PMSProblem:
           index1, index2 = np.random.choice(len(chromosome), 2, replace=False)
           mutated[index1], mutated[index2] = mutated[index2], mutated[index1]
 
-          return mutated         
+          return mutated    
+
+        def run(self):
+            """"GA'yı çalıştır"""
+            start_time = datetime.now()
+
+            # Başlangıç popülasyonu
+            population = [self.create_chromosome() for _ in range(self.pop_size)]
+
+            best_solution = None
+            best_fitness = float('inf') 
+
+            for gen in range(self.generations):
+                # Fitness hesapla
+                fitness_scores = []
+                for chrom in population:
+                    fit, _, _  = self.calculate_fitness(chrom)
+                    fitness_scores.append(fit)
+
+                # En iyi çözümü güncelle
+                gen_best_index = np.argmin(fitness_scores)
+                gen_best_fitness = fitness_scores[gen_best_index]
+
+                if gen_best_fitness < best_fitness: 
+                    best_fitness = gen_best_fitness
+                    best_solution = population[gen_best_index].copy()
+
+                # İstatistikleri kaydet
+                self.best_fitness_history.append(best_fitness)  
+                self.avg_fitness_history.append(np.mean(fitness_scores))
+
+                # Yeni nesil oluştur
+                selected = self.seleciton(population, fitness_scores)
+
+                new_population = []
+                for i in range(0, len(selected), 2):
+                    if i+ 1 < len(selected):
+                        child1, child2 = self.crossover(selected[i], selected[i+1])
+                        child1 = self.mutate(child1)
+                        child2 = self.mutate(child2)
+                        new_population.extend([child1, child2])
+
+                population = new_population[:self.pop_size] # Popülasyon boyutunu koru
+
+                if gen % 20 == 0:
+                    print(f"Nesil {gen}: En İyi Fitness = {best_fitness:.2f}, Ortalama = {np.mean(fitness_scores):.2f}")    
+
+            end_time = datetime.now()
+            computation_time = (end_time - start_time).total_seconds()
+
+            print(f"GA tamamlandı. En iyi fitness: {best_fitness:.2f}, Süre: {computation_time:.2f} saniye")
+
+            return best_solution, best_fitness, computation_time
         
+# Ana çalıştırma
+if __name__ == "__main__":
+    # Problem oluştur
+    problem = PMSProblem()
+    
+    # GA'yı çalıştır
+    print("\nGenetik Algoritma başlatılıyor...")
+    ga = GeneticAlgorithm(problem, pop_size=100, generations=200, crossover_rate=0.8, mutation_rate=0.2)
+    best_solution, best_fitness, comp_time = ga.run()
              

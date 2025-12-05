@@ -437,7 +437,7 @@ class HybridGATS:
         self.ga_fitness_history = ga.best_fitness_history
         self.ga_time = ga_time
         
-        print(f"\n GA Tamamlandı: Fitness = {ga_fitness:.2f}, Süre = {ga_time:.2f}s")
+        print(f"\nGA Tamamlandı: Fitness = {ga_fitness:.2f}, Süre = {ga_time:.2f}s")
         
         # 2. Adım: TS ile iyileştir
         ts = TabuSearch(self.problem, **self.ts_params)
@@ -446,12 +446,37 @@ class HybridGATS:
         self.ts_fitness_history = ts.best_fitness_history
         self.ts_time = ts_time
         
-        print(f"\n TS Tamamlandı: Fitness = {final_fitness:.2f}, Süre = {ts_time:.2f}s")
+        print(f"\nTS Tamamlandı: Fitness = {final_fitness:.2f}, Süre = {ts_time:.2f}s")
         
         # Toplam iyileşme
         total_improvement = ((ga_fitness - final_fitness) / ga_fitness * 100)
         total_time = ga_time + ts_time
         
-        return final_solution, final_fitness, total_time, ga_solution, ga_fitness    
+        return final_solution, final_fitness, total_time, ga_solution, ga_fitness   
+
+if __name__ == "__main__":
+    # Problem oluştur
+    problem = PMSProblem()  
+
+    # Sadece GA
+    print("\nSadece Genetik Algoritma (GA) çalıştırılıyor...")
+    ga_only = GeneticAlgorithm(problem, pop_size=100, generations=200)
+    ga_solution, ga_fitness, ga_time = ga_only.run()
+    ga_only_results = (ga_solution, ga_fitness, ga_time)
+    
+    # GA + TS Hibrit
+    print("\nGA + TS Hibrit yaklaşım çalıştırılıyor...")
+    hybrid = HybridGATS(
+        problem, 
+        ga_params={'pop_size': 100, 'generations': 200},
+        ts_params={'tabu_tenure': 4, 'max_iterations': 50}
+    )
+    hybrid_solution, hybrid_fitness, hybrid_time, _, _ = hybrid.run()
+    hybrid_results = (hybrid_solution, hybrid_fitness, hybrid_time, ga_solution, ga_fitness)
+    
+    print("\nGA + TS TAMAMLANDI!")
+    print(f"GA Fitness: {ga_fitness:.2f}")
+    print(f"Hibrit (GA+TS) Fitness: {hybrid_fitness:.2f}")
+    print(f"İyileşme: %{((ga_fitness - hybrid_fitness) / ga_fitness * 100):.2f}")  
     
        

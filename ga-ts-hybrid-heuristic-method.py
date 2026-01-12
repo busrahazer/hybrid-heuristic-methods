@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from datetime import datetime
+import optuna
 
 # Problem paramtetreleri 
 class PMSProblem:
@@ -546,6 +547,31 @@ def compare_ga_vs_hybrid(ga_only_results, hybrid_results, problem):
     
     return df
 
+def objective(trial):
+
+    # ---- GA PARAMETRELERİ ----
+        ga_params = {
+            "pop_size": trial.suggest_int("pop_size", 30, 150),
+            "generations": trial.suggest_int("generations", 100, 300),
+            "crossover_rate": trial.suggest_float("crossover_rate", 0.6, 0.95),
+            "mutation_rate": trial.suggest_float("mutation_rate", 0.05, 0.3),
+        }
+
+        # ---- TS PARAMETRELERİ ----
+        ts_params = {
+            "tabu_tenure": trial.suggest_int("tabu_tenure", 3, 15),
+            "max_iterations": trial.suggest_int("max_iterations", 20, 100),
+        }
+
+        # ---- HİBRİT ALGORİTMA ----
+        hybrid = HybridGATS(problem, ga_params=ga_params, ts_params=ts_params)
+
+        final_solution, final_fitness, total_time, ga_solution, ga_fitness = hybrid.run()
+
+        # ---- TEK SAYI DÖNDÜR ----
+        # Daha düşük fitness = daha iyi
+        return final_fitness
+
 
 def plot_hybrid_convergence(hybrid_obj):
     """Hibrit yaklaşımın yakınsama grafiği"""
@@ -609,6 +635,15 @@ if __name__ == "__main__":
     )
     hybrid_solution, hybrid_fitness, hybrid_time, _, _ = hybrid.run()
     hybrid_results = (hybrid_solution, hybrid_fitness, hybrid_time, ga_solution, ga_fitness)
+    
+    study = optuna.create_study(direction="minimize")
+    study.optimize(objective, n_trials=20)
+
+    print("\nEN İYİ PARAMETRELER:")
+    for k, v in study.best_params.items():
+        print(f"{k}: {v}")
+
+    print(f"\nEN İYİ FITNESS: {study.best_value:.2f}")
 
     # KARŞILAŞTIRMA
     print("\n" + "="*70)

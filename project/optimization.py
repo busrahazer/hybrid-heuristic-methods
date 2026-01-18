@@ -142,3 +142,102 @@ class ParameterOptimizer:
             'improvement': improvement,
             'best_trial_index': best_trial_index
         }
+
+# ==================== SENSİTİVİTE ANALİZİ ====================
+class SensitivityAnalyzer:
+    """Parametre sensitivity analizi"""
+    
+    def __init__(self, problem, base_params):
+        self.problem = problem
+        self.base_params = base_params
+        self.sensitivity_results = {}
+        
+    def test_parameter(self, param_name, param_values, n_runs=5):
+        """Bir parametreyi farklı değerlerle test et"""
+        print(f"\n🔬 '{param_name}' parametresi test ediliyor...")
+        print(f"   Test değerleri: {param_values}")
+        
+        results = []
+        
+        for value in param_values:
+            fitness_scores = []
+            times = []
+            
+            for run in range(n_runs):
+                # Parametreleri ayarla
+                test_params = self.base_params.copy()
+                
+                if param_name in ['pop_size', 'generations', 'crossover_rate', 'mutation_rate']:
+                    test_params['ga_params'] = test_params.get('ga_params', {}).copy()
+                    test_params['ga_params'][param_name] = value
+                else:
+                    test_params['ts_params'] = test_params.get('ts_params', {}).copy()
+                    test_params['ts_params'][param_name] = value
+                
+                # Hibrit çalıştır
+                hybrid = HybridGATS(self.problem, **test_params, verbose=False)
+                _, fitness, time, _, _, _ = hybrid.run()
+                
+                fitness_scores.append(fitness)
+                times.append(time)
+            
+            # Ortalama ve std
+            avg_fitness = np.mean(fitness_scores)
+            std_fitness = np.std(fitness_scores)
+            avg_time = np.mean(times)
+            
+            results.append({
+                'value': value,
+                'avg_fitness': avg_fitness,
+                'std_fitness': std_fitness,
+                'avg_time': avg_time,
+                'all_fitness': fitness_scores
+            })
+            
+            print(f"   {param_name}={value}: Fitness={avg_fitness:.2f} (±{std_fitness:.2f}), Süre={avg_time:.2f}s")
+        
+        self.sensitivity_results[param_name] = results
+        return results
+    
+    def run_full_analysis(self):
+        """Tüm parametreler için sensitivity analizi"""
+        print("\n" + "="*80)
+        print("SENSİTİVİTE ANALİZİ BAŞLIYOR")
+        print("="*80)
+        
+        # Test edilecek parametreler ve değerleri
+        test_params = {
+            'pop_size': [50, 75, 100, 125, 150],
+            'mutation_rate': [0.1, 0.15, 0.2, 0.25, 0.3],
+            'crossover_rate': [0.6, 0.7, 0.8, 0.9],
+            'tabu_tenure': [2, 4, 6, 8, 10]
+        }
+        
+        for param_name, param_values in test_params.items():
+            self.test_parameter(param_name, param_values, n_runs=3)
+        
+        print("\n" + "="*80)
+        print("SENSİTİVİTE ANALİZİ TAMAMLANDI!")
+        print("="*80)
+        
+        return self.sensitivity_results
+    
+    def get_best_values(self):
+        """Her parametre için en iyi değeri bul"""
+        print("\n" + "="*80)
+        print("PARAMETRELERİN EN İYİ DEĞERLERİ")
+        print("="*80)
+        
+        best_values = {}
+        
+        for param_name, results in self.sensitivity_results.items():
+            best_result = min(results, key=lambda x: x['avg_fitness'])
+            best_values[param_name] = best_result['value']
+            
+            print(f"\n{param_name}:")
+            print(f"  En iyi değer: {best_result['value']}")
+            print(f"  Fitness: {best_result['avg_fitness']:.2f} (±{best_result['std_fitness']:.2f})")
+        
+        print("="*80)
+        
+        return best_values

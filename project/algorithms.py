@@ -413,3 +413,40 @@ class TabuSearch:
             print(f"  Aspiration kullanım sayısı: {aspiration_count}")
 
         return best_solution, best_fitness, computation_time
+
+# ==================== HİBRİT SISTEM ====================
+class HybridGATS:
+    """Hibrit GA + TS Yaklaşımı"""
+
+    def __init__(self, problem, ga_params=None, ts_params=None, verbose=True):
+        self.problem = problem
+        self.ga_params = ga_params or {}
+        self.ts_params = ts_params or {}
+        self.verbose = verbose
+
+        self.ga_fitness_history = []
+        self.ts_fitness_history = []
+        self.ga_time = 0
+        self.ts_time = 0
+        self.ga_details = None
+
+    def run(self):
+        """Hibrit yaklaşımı çalıştır"""
+        # GA
+        ga = GeneticAlgorithm(self.problem, **self.ga_params, verbose=self.verbose)
+        ga_solution, ga_fitness, ga_time, ga_details = ga.run()
+
+        self.ga_fitness_history = ga.best_fitness_history
+        self.ga_time = ga_time
+        self.ga_details = ga_details
+
+        # TS
+        ts = TabuSearch(self.problem, **self.ts_params, verbose=self.verbose)
+        final_solution, final_fitness, ts_time = ts.run(ga_solution)
+
+        self.ts_fitness_history = ts.best_fitness_history
+        self.ts_time = ts_time
+
+        total_time = ga_time + ts_time
+
+        return final_solution, final_fitness, total_time, ga_solution, ga_fitness, ga_details

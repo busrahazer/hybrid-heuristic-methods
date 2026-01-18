@@ -258,3 +258,158 @@ class GeneticAlgorithm:
         _, final_details = self.calculate_fitness(best_solution)
 
         return best_solution, best_fitness, computation_time, final_details    
+    
+# ==================== TABU SEARCH ====================
+class TabuSearch:
+
+    def __init__(self, problem, tabu_tenure=4, max_iterations=50, verbose=True):
+        self.problem = problem
+        self.tabu_tenure = tabu_tenure
+        self.max_iterations = max_iterations
+        self.verbose = verbose
+        
+        self.tabu_list = []
+        self.best_fitness_history = []
+        self.accepted_moves = []  # Kabul edilen hamle sayısı
+        self.aspiration_triggers = []  # Aspiration criteria kaç kez tetiklendi
+
+    def calculate_fitness(self, chromosome):
+        """Fitness hesaplama"""
+        water_production = np.zeros(self.problem.T)
+        electricity_production = np.zeros(self.problem.T)
+
+        for week in range(self.problem.T):
+            equipment_in_maintenance = chromosome[week]
+            active_turbines = self.problem.n_turbines
+            active_distillers = self.problem.n_distillers
+
+            if equipment_in_maintenance != 0:
+                eq_type = self.get_equipment_type(equipment_in_maintenance)
+                if eq_type == 'turbine':
+                    active_turbines -= 1
+                elif eq_type == 'distiller':
+                    active_distillers -= 1
+                elif eq_type == 'boiler':
+                    active_turbines -= 1
+                    active_distillers -= 2
+
+            electricity_production[week] = active_turbines * self.problem.production_capacity['turbine']
+            water_production[week] = active_distillers * self.problem.production_capacity['distiller']
+
+        water_gap = water_production - self.problem.water_demand
+        electricity_gap = electricity_production - self.problem.electricity_demand
+
+        penalty = 0
+        penalty += np.sum(np.abs(water_gap[water_gap < 0])) * 1000
+        penalty += np.sum(np.abs(electricity_gap[electricity_gap < 0])) * 1000
+
+        fitness = np.std(water_gap) + np.std(electricity_gap) + penalty
+
+        return fitness
+
+    def get_equipment_type(self, eq_id):
+        if eq_id <= self.problem.n_boilers:
+            return 'boiler'
+        elif eq_id <= self.problem.n_boilers + self.problem.n_turbines:
+            return 'turbine'
+        else:
+            return 'distiller'
+
+    def generate_neighbors(self, solution):
+        """Komşu çözümler üret - SWAP operasyonu"""
+        neighbors = []
+
+        for i in range(len(solution)):
+            for j in range(i+1, min(i+10, len(solution))):
+                if (i, j) not in self.tabu_list:
+                    neighbor = solution.copy()
+                    neighbor[i], neighbor[j] = neighbor[j], neighbor[i]
+                    neighbors.append((neighbor, (i, j), 'swap'))
+
+        return neighbors
+
+    def update_tabu_list(self, move):
+        """Tabu listesini güncelle"""
+        self.tabu_list.append(move)
+        if len(self.tabu_list) > self.tabu_tenure:
+            self.tabu_list.pop(0)
+
+    def run(self, initial_solution):
+        """Tabu Search'ü çalıştır"""
+        if self.verbose:
+            print("\n--- Tabu Search Başlatılıyor ---")
+        
+        start_time = datetime.now()
+
+        current_solution = initial_solution.copy()
+        current_fitness = self.calculate_fitness(current_solution)
+
+        best_solution = current_solution.copy()
+        best_fitness = current_fitness
+
+        self.best_fitness_history.append(best_fitness)
+
+        iterations_without_improvement = 0
+        aspiration_count = 0
+
+        for iteration in range(self.max_iterations):
+            neighbors = self.generate_neighbors(current_solution)
+
+            if not neighbors:
+                break
+
+            best_neighbor = None
+            best_neighbor_fitness = float('inf')
+            best_move = None
+            aspiration_used = False
+
+            for neighbor, move, move_type in neighbors:
+                neighbor_fitness = self.calculate_fitness(neighbor)
+
+                # Aspiration criteria
+                if neighbor_fitness < best_fitness:
+                    best_neighbor = neighbor
+                    best_neighbor_fitness = neighbor_fitness
+                    best_move = move
+                    aspiration_used = True
+                    aspiration_count += 1
+                    break
+
+                if neighbor_fitness < best_neighbor_fitness:
+                    best_neighbor = neighbor
+                    best_neighbor_fitness = neighbor_fitness
+                    best_move = move
+
+            current_solution = best_neighbor
+            current_fitness = best_neighbor_fitness
+
+            if best_move:
+                self.update_tabu_list(best_move)
+                self.accepted_moves.append(1)
+            else:
+                self.accepted_moves.append(0)
+
+            if current_fitness < best_fitness:
+                best_solution = current_solution.copy()
+                best_fitness = current_fitness
+                iterations_without_improvement = 0
+                if self.verbose:
+                    aspiration_marker = " [ASPIRATION]" if aspiration_used else ""
+                    print(f"TS İterasyon {iteration}: YENİ EN İYİ = {best_fitness:.2f}{aspiration_marker} ✓")
+            else:
+                iterations_without_improvement += 1
+
+            self.best_fitness_history.append(best_fitness)
+            self.aspiration_triggers.append(aspiration_count)
+
+            if iterations_without_improvement > 15:
+                break
+
+        end_time = datetime.now()
+        computation_time = (end_time - start_time).total_seconds()
+
+        if self.verbose:
+            print(f"✓ TS tamamlandı: Fitness = {best_fitness:.2f}, Süre = {computation_time:.2f}s")
+            print(f"  Aspiration kullanım sayısı: {aspiration_count}")
+
+        return best_solution, best_fitness, computation_time

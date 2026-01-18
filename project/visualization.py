@@ -122,3 +122,31 @@ class BasicVisualizations:
         print(f"  İyileşme: {improvement_elec:+.2f}%")
         print("="*70)
     
+    @staticmethod
+    def plot_comparison_table(ga_results, hybrid_results):
+        """Karşılaştırma tablosu"""
+        ga_solution, ga_fitness, ga_time = ga_results
+        hybrid_solution, hybrid_fitness, hybrid_time, _, _, _ = hybrid_results
+
+        comparison_data = {
+            'Metrik': ['Fitness Değeri', 'Hesaplama Süresi (s)', 'İyileşme Oranı (%)'],
+            'GA (Tek Başına)': [
+                f"{ga_fitness:.2f}",
+                f"{ga_time:.2f}",
+                "-"
+            ],
+            'GA + TS (Hibrit)': [
+                f"{hybrid_fitness:.2f}",
+                f"{hybrid_time:.2f}",
+                f"{((ga_fitness - hybrid_fitness) / ga_fitness * 100):.2f}%"
+            ]
+        }
+
+        df = pd.DataFrame(comparison_data)
+        print("\n" + "="*70)
+        print("KARŞILAŞTIRMA TABLOSU: GA vs GA+TS")
+        print("="*70)
+        print(df.to_string(index=False))
+        print("="*70)
+
+        return df

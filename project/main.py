@@ -226,3 +226,66 @@ def run_sensitivity_analysis(problem, best_params):
     sensitivity_results = analyzer.run_full_analysis()
     
     best_values = analyzer.get_best_values()
+
+    # Görselleştirme
+    print("\n Sensitivity Grafikleri:")
+    AdvancedVisualizations.plot_sensitivity_analysis(sensitivity_results)
+
+    return sensitivity_results
+
+def main():
+    """Ana program"""
+    print("\n" + "="*80)
+    print(" " * 20 + "GA + TS + OPTUNA TAM ENTEGRE SİSTEM")
+    print(" " * 15 + "Preventive Maintenance Scheduling (PMS)")
+    print("="*80)
+
+    # Problem oluştur
+    problem = PMSProblem(seed=GLOBAL_SEED)
+    print(f"\n Problem Parametreleri:")
+    print(f"   • Toplam Ekipman: {problem.total_equipment}")
+    print(f"   • Zaman Horizonu: {problem.T} hafta")
+    print(f"   • Seed: {GLOBAL_SEED} (Tekrarlanabilir sonuçlar)")
+
+    # ==================== BÖLÜM 1: Temel Karşılaştırma ====================
+    ga_results, hybrid_results = run_basic_comparison(problem)
+
+    # ==================== BÖLÜM 2: Parametre Optimizasyonu ====================
+    print("\n" + "="*80)
+    response = input("\nParametre optimizasyonu yapmak istiyor musunuz? (e/h): ")
+    
+    if response.lower() == 'e':
+        n_trials = int(input("Kaç trial yapmak istersiniz? (önerilen: 30-50): "))
+        best_params, optimization_results = run_parameter_optimization(problem, n_trials)
+
+        # ==================== BÖLÜM 3: Optimize Parametrelerle Final ====================
+        response2 = input("\nOptimize parametrelerle final karşılaştırma yapmak istiyor musunuz? (e/h): ")
+        if response2.lower() == 'e':
+            ga_opt_results, hybrid_opt_results, comparison_df = run_optimized_comparison(problem, best_params)
+
+            # Standart vs Optimize karşılaştırması
+            print("\n" + "="*80)
+            print("STANDART vs OPTİMİZE PARAMETRELERİ KARŞILAŞTIRMA")
+            print("="*80)
+            print(f"\nStandart Hibrit Fitness: {hybrid_results[1]:.2f}")
+            print(f"Optimize Hibrit Fitness: {hybrid_opt_results[1]:.2f}")
+            improvement = ((hybrid_results[1] - hybrid_opt_results[1]) / hybrid_results[1] * 100)
+            print(f"İyileşme: {improvement:.2f}%")
+            print("="*80)
+        else:
+            optimization_results = None
+    else:
+        optimization_results = None
+
+    # ==================== ÖZET RAPOR ====================
+    print("\n" + "="*80)
+    print(" " * 30 + "ÖZET RAPOR")
+    print("="*80)
+    ReportGenerator.generate_summary_report(ga_results, hybrid_results, optimization_results)
+
+    print("\n TÜM ANALIZLER TAMAMLANDI!")
+    print("="*80)
+
+
+if __name__ == "__main__":
+    main()

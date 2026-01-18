@@ -285,3 +285,43 @@ class AdvancedVisualizations:
 
         plt.tight_layout()
         plt.show()
+
+# ==================== RAPOR OLUŞTURMA ====================
+class ReportGenerator:
+    """Özet rapor oluşturma"""
+    
+    @staticmethod
+    def generate_summary_report(ga_results, hybrid_results, optimization_results=None):
+        """Kapsamlı özet rapor"""
+        ga_solution, ga_fitness, ga_time = ga_results
+        hybrid_solution, hybrid_fitness, hybrid_time, _, _, ga_details = hybrid_results
+
+        print("\n" + "="*80)
+        print(" " * 25 + "ÖZET RAPOR")
+        print("="*80)
+
+        print("\n PERFORMANS KARŞILAŞTIRMASI")
+        print("-" * 80)
+        print(f"{'Metrik':<30} {'GA':<20} {'GA+TS':<20} {'İyileşme':<10}")
+        print("-" * 80)
+        print(f"{'Fitness Değeri':<30} {ga_fitness:<20.2f} {hybrid_fitness:<20.2f} {((ga_fitness - hybrid_fitness) / ga_fitness * 100):>8.2f}%")
+        print(f"{'Hesaplama Süresi (s)':<30} {ga_time:<20.2f} {hybrid_time:<20.2f} {'-':<10}")
+        print(f"{'Su Min Gap (MIGD)':<30} {ga_details['min_water_gap']:<20.2f} {'-':<20} {'-':<10}")
+        print(f"{'Elektrik Min Gap (MW)':<30} {ga_details['min_electricity_gap']:<20.2f} {'-':<20} {'-':<10}")
+        print("-" * 80)
+
+        if optimization_results:
+            print("\n OPTİMİZASYON SONUÇLARI")
+            print("-" * 80)
+            print(f"En iyi fitness: {optimization_results['best_value']:.2f}")
+            print(f"Trial sayısı: {optimization_results['n_trials']}")
+            print("\nEn iyi parametreler:")
+            for k, v in optimization_results['best_params'].items():
+                print(f"  {k:<20}: {v}")
+            print("-" * 80)
+
+        print("\n SONUÇ:")
+        print(f"  • TS, GA'nın bulduğu çözümü {((ga_fitness - hybrid_fitness) / ga_fitness * 100):.2f}% iyileştirdi")
+        print(f"  • Ek maliyet: {hybrid_time - ga_time:.2f} saniye ({(hybrid_time - ga_time) / ga_time * 100:.1f}% artış)")
+        print(f"  • Maliyet/Fayda oranı: {((ga_fitness - hybrid_fitness) / ga_fitness * 100) / ((hybrid_time - ga_time) / ga_time * 100):.2f}")
+        print("="*80)        

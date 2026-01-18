@@ -150,3 +150,138 @@ class BasicVisualizations:
         print("="*70)
 
         return df
+    
+# ==================== GELİŞMİŞ GÖRSELLEŞTİRMELER ====================
+class AdvancedVisualizations:
+    """Gelişmiş analiz grafikleri"""
+    
+    @staticmethod
+    def plot_diversity_evolution(ga_obj):
+        """Popülasyon çeşitliliğinin evrimiGA nesiller boyunca"""
+        fig, axes = plt.subplots(2, 1, figsize=(14, 10))
+
+        # Çeşitlilik evrimi
+        axes[0].plot(ga_obj.diversity_history, 'purple', linewidth=2, label='Popülasyon Çeşitliliği')
+        axes[0].set_xlabel('Nesil', fontsize=11, fontweight='bold')
+        axes[0].set_ylabel('Çeşitlilik (Hamming Distance)', fontsize=11, fontweight='bold')
+        axes[0].set_title('Popülasyon Çeşitliliğinin Evrimi', fontsize=12, fontweight='bold')
+        axes[0].legend(fontsize=10)
+        axes[0].grid(True, alpha=0.3)
+
+        # Her nesildeki iyileştirme
+        axes[1].bar(range(len(ga_obj.improvement_per_generation)), ga_obj.improvement_per_generation, 
+                    color='green', alpha=0.6, label='İyileşme Miktarı')
+        axes[1].set_xlabel('Nesil', fontsize=11, fontweight='bold')
+        axes[1].set_ylabel('İyileşme (Fitness Azalması)', fontsize=11, fontweight='bold')
+        axes[1].set_title('Nesil Bazlı İyileşme Katkıları', fontsize=12, fontweight='bold')
+        axes[1].legend(fontsize=10)
+        axes[1].grid(axis='y', alpha=0.3)
+
+        plt.tight_layout()
+        plt.show()
+    
+    @staticmethod
+    def plot_optimization_progress(optimizer):
+        """Optuna optimizasyon ilerlemesi"""
+        df = optimizer.get_optimization_dataframe()
+
+        fig, axes = plt.subplots(2, 2, figsize=(16, 10))
+
+        # 1. Trial bazlı fitness
+        axes[0, 0].plot(df['trial'], df['fitness'], 'o-', linewidth=2, markersize=6, alpha=0.7, label='Fitness')
+        axes[0, 0].plot(df['trial'], df['fitness'].cummin(), 'r-', linewidth=2, label='En İyi (Kümülatif)')
+        axes[0, 0].set_xlabel('Trial Numarası', fontsize=11, fontweight='bold')
+        axes[0, 0].set_ylabel('Fitness Değeri', fontsize=11, fontweight='bold')
+        axes[0, 0].set_title('Optimizasyon İlerlemesi', fontsize=12, fontweight='bold')
+        axes[0, 0].legend(fontsize=10)
+        axes[0, 0].grid(True, alpha=0.3)
+
+        # 2. GA vs Hibrit iyileşme
+        axes[0, 1].scatter(df['ga_fitness'], df['fitness'], alpha=0.6, s=50)
+        axes[0, 1].plot([df['ga_fitness'].min(), df['ga_fitness'].max()], 
+                        [df['ga_fitness'].min(), df['ga_fitness'].max()], 
+                        'r--', linewidth=2, label='Eşitlik Çizgisi')
+        axes[0, 1].set_xlabel('GA Fitness', fontsize=11, fontweight='bold')
+        axes[0, 1].set_ylabel('Hibrit Fitness', fontsize=11, fontweight='bold')
+        axes[0, 1].set_title('GA vs Hibrit Performans', fontsize=12, fontweight='bold')
+        axes[0, 1].legend(fontsize=10)
+        axes[0, 1].grid(True, alpha=0.3)
+
+        # 3. İyileşme dağılımı
+        axes[1, 0].hist(df['improvement'], bins=20, color='green', alpha=0.7, edgecolor='black')
+        axes[1, 0].axvline(df['improvement'].mean(), color='red', linestyle='--', linewidth=2, label=f'Ortalama: {df["improvement"].mean():.2f}')
+        axes[1, 0].set_xlabel('İyileşme Miktarı (GA → Hibrit)', fontsize=11, fontweight='bold')
+        axes[1, 0].set_ylabel('Frekans', fontsize=11, fontweight='bold')
+        axes[1, 0].set_title('TS İyileşme Dağılımı', fontsize=12, fontweight='bold')
+        axes[1, 0].legend(fontsize=10)
+        axes[1, 0].grid(axis='y', alpha=0.3)
+
+        # 4. Hesaplama süresi dağılımı
+        axes[1, 1].boxplot([df['time']], labels=['Hibrit'])
+        axes[1, 1].set_ylabel('Süre (saniye)', fontsize=11, fontweight='bold')
+        axes[1, 1].set_title(f'Hesaplama Süresi Dağılımı\n(Ort: {df["time"].mean():.2f}s)', fontsize=12, fontweight='bold')
+        axes[1, 1].grid(axis='y', alpha=0.3)
+
+        plt.tight_layout()
+        plt.show()
+    
+    @staticmethod
+    def plot_parameter_importance(optimizer):
+        """Parametre önem grafiği"""
+        importance = optimizer.get_parameter_importance()
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        params = list(importance.keys())
+        scores = list(importance.values())
+
+        colors = ['steelblue' if 'ga' in p or p in ['pop_size', 'generations', 'crossover_rate', 'mutation_rate'] 
+                  else 'darkgreen' for p in params]
+
+        bars = ax.barh(params, scores, color=colors, alpha=0.7, edgecolor='black')
+
+        ax.set_xlabel('Önem Skoru', fontsize=12, fontweight='bold')
+        ax.set_title('Parametre Önem Sıralaması (Optuna)', fontsize=13, fontweight='bold')
+        ax.grid(axis='x', alpha=0.3)
+
+        # Legend
+        from matplotlib.patches import Patch
+        legend_elements = [
+            Patch(facecolor='steelblue', label='GA Parametreleri'),
+            Patch(facecolor='darkgreen', label='TS Parametreleri')
+        ]
+        ax.legend(handles=legend_elements, fontsize=10)
+
+        plt.tight_layout()
+        plt.show()
+    
+    @staticmethod
+    def plot_sensitivity_analysis(sensitivity_results):
+        """Sensitivity analiz grafikleri"""
+        n_params = len(sensitivity_results)
+        fig, axes = plt.subplots(2, 2, figsize=(16, 10))
+        axes = axes.flatten()
+
+        for idx, (param_name, results) in enumerate(sensitivity_results.items()):
+            if idx >= 4:
+                break
+
+            values = [r['value'] for r in results]
+            avg_fitness = [r['avg_fitness'] for r in results]
+            std_fitness = [r['std_fitness'] for r in results]
+
+            axes[idx].errorbar(values, avg_fitness, yerr=std_fitness, 
+                               marker='o', linewidth=2, markersize=8, capsize=5)
+            axes[idx].set_xlabel(param_name, fontsize=11, fontweight='bold')
+            axes[idx].set_ylabel('Fitness Değeri', fontsize=11, fontweight='bold')
+            axes[idx].set_title(f'{param_name} Sensitivity', fontsize=12, fontweight='bold')
+            axes[idx].grid(True, alpha=0.3)
+
+            # En iyi değeri işaretle
+            best_idx = np.argmin(avg_fitness)
+            axes[idx].scatter([values[best_idx]], [avg_fitness[best_idx]], 
+                              color='red', s=200, marker='*', zorder=5, label='En İyi')
+            axes[idx].legend(fontsize=9)
+
+        plt.tight_layout()
+        plt.show()

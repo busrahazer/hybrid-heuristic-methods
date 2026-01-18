@@ -1,0 +1,144 @@
+import optuna
+import numpy as np
+import pandas as pd
+from algorithms import HybridGATS
+
+
+# ==================== OPTUNA OPTİMİZASYON ====================
+class ParameterOptimizer:
+    """Optuna ile parametre optimizasyonu"""
+    
+    def __init__(self, problem, n_trials=30, seed=42):
+        self.problem = problem
+        self.n_trials = n_trials
+        self.seed = seed
+        
+        self.study = None
+        self.best_params = None
+        self.optimization_history = []
+        
+    def objective(self, trial):
+        """Optuna objective fonksiyonu"""
+        
+        #  HER TRIAL için FARKLI random state (ama AYNI problem)
+        trial_seed = self.seed + trial.number * 1000  # Büyük aralıklarla seed değiştir
+        np.random.seed(trial_seed)
+        
+        # GA parametreleri
+        ga_params = {
+            "pop_size": trial.suggest_int("pop_size", 50, 150),
+            "generations": trial.suggest_int("generations", 100, 300),
+            "crossover_rate": trial.suggest_float("crossover_rate", 0.6, 0.95),
+            "mutation_rate": trial.suggest_float("mutation_rate", 0.05, 0.3),
+        }
+
+        # TS parametreleri
+        ts_params = {
+            "tabu_tenure": trial.suggest_int("tabu_tenure", 2, 10),
+            "max_iterations": trial.suggest_int("max_iterations", 30, 80),
+        }
+
+        #  Hibrit algoritmayı çalıştır (aynı problem, farklı random başlangıç)
+        hybrid = HybridGATS(self.problem, ga_params=ga_params, ts_params=ts_params, verbose=False)
+        final_solution, final_fitness, total_time, ga_solution, ga_fitness, _ = hybrid.run()
+        
+        # İstatistikleri kaydet
+        self.optimization_history.append({
+            'trial': trial.number,
+            'fitness': final_fitness,
+            'ga_fitness': ga_fitness,
+            'improvement': ga_fitness - final_fitness,
+            'time': total_time,
+            'trial_seed': trial_seed,  #  Seed'i kaydet
+            **ga_params,
+            **ts_params
+        })
+
+        return final_fitness
+    
+    def run_optimization(self):
+        """Optimizasyonu çalıştır"""
+        print("\n" + "="*80)
+        print("OPTUNA İLE PARAMETRE OPTİMİZASYONU")
+        print("="*80)
+        print(f"Trial sayısı: {self.n_trials}")
+        print(f"Seed: {self.seed}")
+        print("Lütfen bekleyin, bu işlem birkaç dakika sürebilir...")
+        print("="*80)
+        
+        # Optuna study oluştur
+        optuna.logging.set_verbosity(optuna.logging.WARNING)
+        self.study = optuna.create_study(
+            direction="minimize",
+            study_name="PMS_Optimization",
+            sampler=optuna.samplers.TPESampler(seed=self.seed)
+        )
+        
+        # Optimizasyonu çalıştır
+        self.study.optimize(self.objective, n_trials=self.n_trials, show_progress_bar=True)
+        
+        self.best_params = self.study.best_params
+        
+        # Sonuçları yazdır
+        print("\n" + "="*80)
+        print("OPTİMİZASYON TAMAMLANDI!")
+        print("="*80)
+        print(f"\n EN İYİ FITNESS: {self.study.best_value:.2f}")
+        print("\n EN İYİ PARAMETRELER:")
+        print("-" * 40)
+        for k, v in self.best_params.items():
+            print(f"  {k:20s}: {v}")
+        print("="*80)
+        
+        return self.best_params
+    
+    def get_optimization_dataframe(self):
+        """Optimizasyon geçmişini DataFrame olarak döndür"""
+        return pd.DataFrame(self.optimization_history)
+    
+    def get_parameter_importance(self):
+        """Parametre önem sıralaması"""
+        if self.study is None:
+            raise ValueError("Önce optimizasyonu çalıştırın!")
+        
+        importance = optuna.importance.get_param_importances(self.study)
+        
+        print("\n" + "="*80)
+        print("PARAMETRE ÖNEM SIRALALAMASI")
+        print("="*80)
+        for param, score in importance.items():
+            print(f"  {param:20s}: {score:.4f}")
+        print("="*80)
+        
+        return importance
+    
+    def analyze_convergence(self):
+        """Optimizasyon yakınsamasını analiz et"""
+        df = self.get_optimization_dataframe()
+        
+        print("\n" + "="*80)
+        print("YAKINŞAMA ANALİZİ")
+        print("="*80)
+        
+        # İlk 10 trial vs son 10 trial
+        first_10_avg = df['fitness'].head(10).mean()
+        last_10_avg = df['fitness'].tail(10).mean()
+        improvement = ((first_10_avg - last_10_avg) / first_10_avg) * 100
+        
+        print(f"\nİlk 10 trial ortalama fitness: {first_10_avg:.2f}")
+        print(f"Son 10 trial ortalama fitness: {last_10_avg:.2f}")
+        print(f"İyileşme: {improvement:.2f}%")
+        
+        # En iyi trial hangi sırada bulundu?
+        best_trial_index = df['fitness'].idxmin()
+        print(f"\nEn iyi çözüm {best_trial_index + 1}. trial'da bulundu")
+        print(f"Toplam {self.n_trials} trial'ın %{(best_trial_index + 1) / self.n_trials * 100:.1f}'inde")
+        
+        print("="*80)
+        
+        return {
+            'first_10_avg': first_10_avg,
+            'last_10_avg': last_10_avg,
+            'improvement': improvement,
+            'best_trial_index': best_trial_index
+        }
